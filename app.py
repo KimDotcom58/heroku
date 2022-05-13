@@ -1,21 +1,39 @@
-from flask import Flask
-from datetime import datetime
-app = Flask(__name__)
+# -*- encoding: utf-8 -*-
+"""
+Copyright (c) 2019 - present AppSeed.us
+"""
 
-@app.route('/')
-def homepage():
-    the_time = datetime.now().strftime("%A, %d %b %Y %l:%M %p")
+from flask_migrate import Migrate
+from sys import exit
+from decouple import config
 
-    return """
-    <h1>Hello heroku</h1>
-    <p>It is currently {time}.</p>
-    <p>It is currently {time}.</p>
+from apps import create_app
+from apps.config import config_dict
+from apps.extensions import db
 
-    <img src="http://loremflickr.com/600/400" />
-    """.format(time=the_time)
+# WARNING: Don't run with debug turned on in production!
+DEBUG = config('DEBUG', default=True, cast=bool)
 
-if __name__ == '__main__':
-    app.run(debug=True, use_reloader=True)
+# The configuration
+get_config_mode = 'Debug' if DEBUG else 'Production'
 
+try:
 
+    # Load the configuration using the default values
+    app_config = config_dict[get_config_mode.capitalize()]
 
+except KeyError:
+    exit('Error: Invalid <config_mode>. Expected values [Debug, Production] ')
+
+app = create_app(app_config)
+Migrate(app, db)
+
+if DEBUG:
+    app.logger.info('DEBUG       = ' + str(DEBUG))
+    app.logger.info('Environment = ' + get_config_mode)
+    app.logger.info('DBMS        = ' + app_config.SQLALCHEMY_DATABASE_URI)
+
+if __name__ == "__main__":
+    # app.run(host='localhost', port=8050,  ssl_context=('cert.pem', 'key.pem'))
+    app.run(host='127.0.0.1', port=8050, ssl_context=('cert.pem', 'key.pem'))
+    app.app_context().push()
